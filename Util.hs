@@ -71,4 +71,13 @@ makeAllAnonymousDatasets :: [[[String]]] -> [[Int]] -> [[[String]]]
 makeAllAnonymousDatasets datasets indices_list =
   map (\indices->  makeAnonymousDataset datasets indices) indices_list
 
--- データセットから可能な全ての並び替えを作成する
+--k匿名化されているか確認する．
+isK_anonymized :: [[String]] -> Int -> Bool
+isK_anonymized dataset k = and $ map isRepeat $ chunksOf k dataset
+
+isRepeat :: Eq a => [a] -> Bool
+isRepeat list = and $ map (\elem-> list !! 0 == elem) list
+
+
+
+
