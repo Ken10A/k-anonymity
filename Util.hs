@@ -29,12 +29,11 @@ countRecordUsefulness :: [String] -> Double
 countRecordUsefulness record =
   (sum $ map countStringUsefulness record) / (fromIntegral . length) record
 
-countDatasetUsefullness :: [[String]] -> Double
-countDatasetUsefullness dataset =
+countDatasetUsefulness :: [[String]] -> Double
+countDatasetUsefulness dataset =
   (sum $ map countRecordUsefulness dataset) / (fromIntegral . length) dataset
 
 --  匿名化の最大値から匿名化段階の全ての組み合わせを作成する
-
 getRecordElemLength :: [String] -> [Int]
 getRecordElemLength record = map length record
 
@@ -53,7 +52,6 @@ makeAllAnonymousDegreesCombination max_degrees =
 
 -- 単一匿名段階の匿名化後データセット群から
 -- 可能な複数の匿名段階を含むデータセットを作成する
-
 getDataset :: [[[String]]] -> Int -> [[String]]
 getDataset datasets index = datasets !! index
 
@@ -76,13 +74,11 @@ makeAllAnonymousDatasets datasets indices_list =
 permutateDataset :: [[String]] -> [[[String]]]
 permutateDataset dataset = permutations dataset
 
---k匿名化されているか確認する．
-isK_anonymized :: [[String]] -> Int -> Bool
-isK_anonymized dataset k = and $ map isRepeat $ chunksOf k dataset
-
+--k匿名化されているか確認する
 isRepeat :: Eq a => [a] -> Bool
 isRepeat list = and $ map (\elem-> list !! 0 == elem) list
 
-
+isK_anonymized :: [[String]] -> Int -> Bool
+isK_anonymized dataset k = and $ map isRepeat $ chunksOf k dataset
 
 
