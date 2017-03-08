@@ -21,7 +21,7 @@ anonymizeDataset dataset hidden_list =
 
 -- 有用度の計算
 countStringUsefulness :: String -> Double
-countStringUsefulness string =
+countStringUsefulness string = 1.0 - 
   (fromIntegral . length) (elemIndices '*' string) /
   (fromIntegral . length) string
 
