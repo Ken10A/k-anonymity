@@ -58,6 +58,13 @@ getDataset datasets index = datasets !! index
 getRecord :: [[String]] -> Int -> [String] 
 getRecord dataset index = dataset !! index
 
+makeAllDatasetIndicesCombination :: [Int]  -> [[Int]]
+makeAllDatasetIndicesCombination max_indices =
+  foldl makeCombination [[]]  partial_indices
+  where
+    candidate_indices = map (\y-> [0..y]) max_indices
+    partial_indices = map (\zs-> [ [z] | z <- zs ]) candidate_indices
+
 makeAnonymousDataset :: [[[String]]] -> [Int] -> [[String]]
 makeAnonymousDataset datasets indices =
   zipWith getRecord ordered_datasets [0 .. max_index]
@@ -74,11 +81,13 @@ makeAllAnonymousDatasets datasets indices_list =
 permutateDataset :: [[String]] -> [[[String]]]
 permutateDataset dataset = permutations dataset
 
---k匿名化されているか確認する
+-- k匿名化されているか確認する
 isRepeat :: Eq a => [a] -> Bool
-isRepeat list = and $ map (\elem-> list !! 0 == elem) list
+isRepeat list = and $ map (\element-> list !! 0 == element) list
 
 isK_anonymized :: [[String]] -> Int -> Bool
 isK_anonymized dataset k = and $ map isRepeat $ chunksOf k dataset
+
+
 
 
