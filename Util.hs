@@ -95,6 +95,9 @@ isRepeat list = and $ map (\element-> list !! 0 == element) list
 isK_anonymized :: [[String]] -> Int -> Bool
 isK_anonymized dataset k = and $ map isRepeat $ chunksOf k dataset
 
-
-
-
+-- 匿名化データをファイルへ書き込み
+writeDatasetToCSV :: [[String]] -> IO()
+writeDatasetToCSV dataset = do
+  let lines' = map (\record-> intercalate "," record) dataset
+  mapM_ putStrLn lines'
+  
