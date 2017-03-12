@@ -13,11 +13,11 @@ anonymizeString string degree =
   addStringN (reverse $ drop degree $ reverse string) "*" degree
 
 anonymizeRecord :: [String] -> [Int] -> [String]
-anonymizeRecord record hidden_list = zipWith anonymizeString record hidden_list
+anonymizeRecord record degrees = zipWith anonymizeString record degrees
 
 anonymizeDataset :: [[String]] -> [Int] -> [[String]]
-anonymizeDataset dataset hidden_list =
-  map (\dataset -> anonymizeRecord dataset hidden_list) dataset
+anonymizeDataset dataset degrees =
+  map (\dataset' -> anonymizeRecord dataset' degrees) dataset
 
 -- 有用度の計算
 countStringUsefulness :: String -> Double
