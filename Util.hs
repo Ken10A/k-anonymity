@@ -3,6 +3,13 @@ module Util where
 import Data.List
 import Data.List.Split
 
+-- データセットの取得
+readDatasetFromCSV :: String -> IO [[String]]
+readDatasetFromCSV path = do
+  f <- readFile path
+  let dataset = map (\strings-> splitOn "," strings) $ lines f
+  return dataset
+
 -- 匿名化
 addStringN :: String -> String -> Int -> String
 addStringN x _ 0 = x 
