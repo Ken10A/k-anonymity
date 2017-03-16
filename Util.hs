@@ -102,3 +102,42 @@ printDatasetAsCSV dataset = do
   mapM_ putStrLn lines'
   putStrLn ""
   
+k_anonymizeOpt :: Int -> String ->IO()
+k_anonymizeOpt k path = do
+  -- データセットを[[String]]で取得
+  f <- readFile path
+  let dataset = map (\string-> splitOn "," string) $ lines f
+
+  -- 1レコードを匿名化できる全ての匿名段階のリストを作成する
+  let all_anonymous_degrees =
+        makeAllAnonymousDegreesCombination $ getRecordElemLength $ dataset !! 0
+        
+  let all_single_anonymity_datasets =
+        map (\degrees-> anonymizeDataset dataset degrees) all_anonymous_degrees
+
+  -- あらゆる匿名段階のレコードを含む匿名化データセットを作成する
+  let all_dataset_indices_combination =
+        makeAllDatasetIndicesCombination $
+        replicate (length dataset) $ (length all_single_anonymity_datasets) - 1
+        
+  let all_multiple_anonymity_datasets = makeAllAnonymousDatasets
+        all_single_anonymity_datasets all_dataset_indices_combination
+
+  -- 各データセットを並び替える
+  let  permutated_datasets =
+         concat $ map permutateDataset all_multiple_anonymity_datasets
+
+  -- k-匿名化されていないデータセットをフィルター
+  let all_k_anonymized_datasets =
+        filter (\datasets-> isK_anonymized datasets k) permutated_datasets
+
+  -- 有用度計算
+  let usefulness_list = map countDatasetUsefulness all_k_anonymized_datasets
+
+  -- 有用度最大のk-匿名化データセットを取り出す
+  let most_useful_datasets =
+        map (\index-> getDataset all_k_anonymized_datasets index) $
+        elemIndices (maximum usefulness_list) usefulness_list
+   
+  mapM_ printDatasetAsCSV most_useful_datasets
+  
