@@ -168,3 +168,19 @@ k_anonymizeSubOpt k path = do
         elemIndices (maximum usefulness_list) usefulness_list
 
   mapM_ printDatasetAsCSV most_useful_datasets
+
+k_anonymize :: [String] -> IO()
+k_anonymize cmdlargs
+  | length cmdlargs /= 3 = putStrLn message
+  | option == "-o"       = k_anonymizeOpt k path
+  | option == "-s"       = k_anonymizeSubOpt k path
+  | otherwise            = putStrLn message
+  where
+    option = cmdlargs !! 0
+    k = read $ cmdlargs !! 1
+    path = cmdlargs !! 2
+    message = "usage: k_anonymize [-o | -s] [k] [input]\n" ++
+              "         [-o]    : getting optimal k-anonymity solution\n" ++
+              "         [-s]    : getting suboptimal k-anonymity solution\n" ++
+              "         [k]     : k-anonymity degree\n" ++
+              "         [input] : raw data file path"
