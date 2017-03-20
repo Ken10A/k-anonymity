@@ -100,7 +100,6 @@ printDatasetAsCSV :: [[String]] -> IO()
 printDatasetAsCSV dataset = do
   let lines' = map (\record-> intercalate "," record) dataset
   mapM_ putStrLn lines'
-  putStrLn ""
   
 k_anonymizeOpt :: Int -> String ->IO()
 k_anonymizeOpt k path = do
@@ -140,6 +139,7 @@ k_anonymizeOpt k path = do
         elemIndices (maximum usefulness_list) usefulness_list
    
   mapM_ printDatasetAsCSV most_useful_datasets
+  putStrLn $ "maximum usefulness: " ++ (show . maximum) usefulness_list
 
 k_anonymizeSubOpt :: Int -> String -> IO()
 k_anonymizeSubOpt k path = do
@@ -168,6 +168,7 @@ k_anonymizeSubOpt k path = do
         elemIndices (maximum usefulness_list) usefulness_list
 
   mapM_ printDatasetAsCSV most_useful_datasets
+  putStrLn $ "maximum usefulness: " ++ (show . maximum) usefulness_list
 
 k_anonymize :: [String] -> IO()
 k_anonymize cmdlargs
