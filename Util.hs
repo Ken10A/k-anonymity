@@ -100,8 +100,8 @@ printDatasetAsCSV :: [[String]] -> IO()
 printDatasetAsCSV dataset = do
   let lines' = map (\record-> intercalate "," record) dataset
   mapM_ putStrLn lines'
-  
-k_anonymizeOpt :: Int -> String ->IO()
+
+k_anonymizeOpt :: Int -> String -> IO()
 k_anonymizeOpt k path = do
   -- データセットを[[String]]で取得
   f <- readFile path
@@ -172,15 +172,23 @@ k_anonymizeSubOpt k path = do
 
 k_anonymize :: [String] -> IO()
 k_anonymize cmdlargs
-  | length cmdlargs /= 3 = putStrLn message
-  | option == "-o"       = k_anonymizeOpt k path
-  | option == "-s"       = k_anonymizeSubOpt k path
-  | otherwise            = putStrLn message
+  | length cmdlargs /= 3 = putStrLn usage
+  | option == "-o"       = do dataset <- readDatasetFromCSV path
+                              if length dataset `mod` k == 0
+                                then k_anonymizeOpt k path
+                                else putStrLn k_error
+  | option == "-s"       = do dataset <- readDatasetFromCSV path
+                              if length dataset `mod` k == 0
+                                then k_anonymizeSubOpt k path
+                                else putStrLn k_error
+  | otherwise            = putStrLn usage
   where
-    option = cmdlargs !! 0
-    k = read $ cmdlargs !! 1
-    path = cmdlargs !! 2
-    message = "usage: k_anonymize [-o | -s] [k] [input]\n" ++
+    option  = cmdlargs !! 0
+    k       = read $ cmdlargs !! 1
+    path    = cmdlargs !! 2
+    k_error = "value 'k' is incorrect!\n" ++
+              "'k' is divisor of dataset size"
+    usage   = "usage: k_anonymize [-o | -s] [k] [input]\n" ++
               "         [-o]    : getting optimal k-anonymity solution\n" ++
               "         [-s]    : getting suboptimal k-anonymity solution\n" ++
               "         [k]     : k-anonymity degree\n" ++

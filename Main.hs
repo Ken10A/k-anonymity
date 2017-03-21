@@ -4,4 +4,4 @@ import System.Environment
 import Util
 
 main :: IO()
-main = k_anonymize =<< getArgs
+main = getArgs >>= k_anonymize
