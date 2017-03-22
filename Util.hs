@@ -193,3 +193,15 @@ k_anonymize cmdlargs
               "         [-s]    : getting suboptimal k-anonymity solution\n" ++
               "         [k]     : k-anonymity degree\n" ++
               "         [input] : raw data file path"
+
+-- 識別子と機密情報の切り離し
+separateDataset :: Int -> [[String]] -> [([String], [String])]
+separateDataset sep dataset = map (splitAt sep) dataset
+
+getAssociativeIdentifier :: [([String],[String])] -> [[String]]
+getAssociativeIdentifier separated_dataset = map fst separated_dataset
+
+getConfidentialInfo :: [([String],[String])] -> [[String]]
+getConfidentialInfo separated_dataset = map snd separated_dataset
+
+
