@@ -3,6 +3,7 @@ module Util where
 import Data.List
 import Data.List.Split
 
+
 -- データセットの取得
 readDatasetFromCSV :: String -> IO [[String]]
 readDatasetFromCSV path = do
@@ -105,8 +106,10 @@ k_anonymizeOpt :: Int -> String -> IO()
 k_anonymizeOpt k path = do
   -- データセットを[[String]]で取得
   f <- readFile path
-  let dataset = map (\string-> splitOn "," string) $ lines f
-
+  let raw_data = separateDataset 3 $ map (\string-> splitOn "," string) $ lines f
+  let dataset  = getAssociativeIdentifier raw_data
+  let confidential_info = getConfidentialInfo raw_data
+  
   -- 1レコードを匿名化できる全ての匿名段階のリストを作成する
   let all_anonymous_degrees =
         makeAllAnonymousDegreesCombination $ getRecordElemLength $ dataset !! 0
@@ -138,14 +141,16 @@ k_anonymizeOpt k path = do
         map (\index-> getDataset all_k_anonymized_datasets index) $
         elemIndices (maximum usefulness_list) usefulness_list
    
-  mapM_ printDatasetAsCSV most_useful_datasets
+  mapM_ printDatasetAsCSV $ map (\assoc_ids-> zipWith (++) assoc_ids confidential_info) most_useful_datasets
   putStrLn $ "maximum usefulness: " ++ (show . maximum) usefulness_list
 
 k_anonymizeSubOpt :: Int -> String -> IO()
 k_anonymizeSubOpt k path = do
   -- データセットを[[String]]で取得
   f <- readFile path
-  let dataset = map (\string-> splitOn "," string) $ lines f
+  let raw_data = sort $ separateDataset 3 $ map (\string-> splitOn "," string) $ lines f
+  let dataset  = getAssociativeIdentifier raw_data
+  let confidential_info = getConfidentialInfo raw_data 
 
   -- 1レコードを匿名化できる全ての匿名段階のリストを作成する
   let all_anonymous_degrees =
@@ -167,7 +172,7 @@ k_anonymizeSubOpt k path = do
         map (\index-> getDataset all_k_anonymized_datasets index) $
         elemIndices (maximum usefulness_list) usefulness_list
 
-  mapM_ printDatasetAsCSV most_useful_datasets
+  mapM_ printDatasetAsCSV $ map (\assoc_ids-> zipWith (++) assoc_ids confidential_info) most_useful_datasets 
   putStrLn $ "maximum usefulness: " ++ (show . maximum) usefulness_list
 
 k_anonymize :: [String] -> IO()
@@ -203,5 +208,4 @@ getAssociativeIdentifier separated_dataset = map fst separated_dataset
 
 getConfidentialInfo :: [([String],[String])] -> [[String]]
 getConfidentialInfo separated_dataset = map snd separated_dataset
-
 
