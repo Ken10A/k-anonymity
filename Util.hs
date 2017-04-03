@@ -3,7 +3,6 @@ module Util where
 import Data.List
 import Data.List.Split
 
-
 -- データセットの取得
 readDatasetFromCSV :: String -> IO [[String]]
 readDatasetFromCSV path = do
@@ -112,7 +111,9 @@ k_anonymizeOpt k path = do
   
   -- 1レコードを匿名化できる全ての匿名段階のリストを作成する
   let all_anonymous_degrees =
-        makeAllAnonymousDegreesCombination $ getRecordElemLength $ dataset !! 0
+        makeAllAnonymousDegreesCombination
+        $ zipWith (-) (map length $ dataset !! 0)
+        $ map countCommonDigits $ transpose dataset
         
   let all_single_anonymity_datasets =
         map (\degrees-> anonymizeDataset dataset degrees) all_anonymous_degrees
@@ -154,7 +155,9 @@ k_anonymizeSubOpt k path = do
 
   -- 1レコードを匿名化できる全ての匿名段階のリストを作成する
   let all_anonymous_degrees =
-        makeAllAnonymousDegreesCombination $ getRecordElemLength $ dataset !! 0
+        makeAllAnonymousDegreesCombination
+        $ zipWith (-) (map length $ dataset !! 0)
+        $ map countCommonDigits $ transpose dataset
         
   let all_single_anonymity_datasets =
         map (\degrees-> anonymizeDataset dataset degrees) all_anonymous_degrees
@@ -209,3 +212,18 @@ getAssociativeIdentifier separated_dataset = map fst separated_dataset
 getConfidentialInfo :: [([String],[String])] -> [[String]]
 getConfidentialInfo separated_dataset = map snd separated_dataset
 
+-- N桁の値の一致を確認する
+hasCommonNDigits :: Int -> [String] -> Bool
+hasCommonNDigits n data' = and $ map (isPrefixOf common) data'
+  where
+    common = take n $ data' !! 0
+    
+-- 上位桁から探した共通最大桁数の取得
+-- 共通桁0のときに番兵として必ずTrueが返るので必ず停止する．
+countCommonDigits :: [String] -> Int
+countCommonDigits codes = loopCounting (length $ codes !! 0) codes
+  where
+    loopCounting n' codes'
+      | hasCommonNDigits n' codes' = n'
+      | otherwise = loopCounting (n' - 1) codes'
+                    
