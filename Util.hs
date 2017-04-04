@@ -118,21 +118,25 @@ k_anonymizeOpt k path = do
   let all_single_anonymity_datasets =
         map (\degrees-> anonymizeDataset dataset degrees) all_anonymous_degrees
 
-  -- あらゆる匿名段階のレコードを含む匿名化データセットを作成する
-  let all_dataset_indices_combination =
-        makeAllDatasetIndicesCombination $
-        replicate (length dataset) $ (length all_single_anonymity_datasets) - 1
+  -- -- あらゆる匿名段階のレコードを含む匿名化データセットを作成する
+  -- let all_dataset_indices_combination =
+  --       makeAllDatasetIndicesCombination $
+  --       replicate (length dataset) $ (length all_single_anonymity_datasets) - 1
         
-  let all_multiple_anonymity_datasets = makeAllAnonymousDatasets
-        all_single_anonymity_datasets all_dataset_indices_combination
+  -- let all_multiple_anonymity_datasets = makeAllAnonymousDatasets
+  --       all_single_anonymity_datasets all_dataset_indices_combination
 
-  -- 各データセットを並び替える
-  let  permutated_datasets =
-         concat $ map permutateDataset all_multiple_anonymity_datasets
+  -- -- 各データセットを並び替える
+  -- let  permutated_datasets =
+  --        concat $ map permutateDataset all_multiple_anonymity_datasets
 
-  -- k-匿名化されていないデータセットをフィルター
+  -- -- k-匿名化されていないデータセットをフィルター
+  -- let all_k_anonymized_datasets =
+  --       filter (\datasets-> isK_anonymized datasets k) permutated_datasets
+
+  -- 全てのk匿名化データセットを作成
   let all_k_anonymized_datasets =
-        filter (\datasets-> isK_anonymized datasets k) permutated_datasets
+        makeAllK_anonymizedDataset all_single_anonymity_datasets k
 
   -- 有用度計算
   let usefulness_list = map countDatasetUsefulness all_k_anonymized_datasets
@@ -226,4 +230,20 @@ countCommonDigits codes = loopCounting (length $ codes !! 0) codes
     loopCounting n' codes'
       | hasCommonNDigits n' codes' = n'
       | otherwise = loopCounting (n' - 1) codes'
-                    
+
+getNRecords :: [[String]] -> [Int] -> [[String]]
+getNRecords dataset record_indices = map (getRecord dataset) record_indices
+
+-- 同データセットから取ったk個のレコードを連続させたデータセットのリストを作成
+makeAllK_anonymizedDataset :: [[[String]]] -> Int -> [[[String]]]
+makeAllK_anonymizedDataset datasets k = do 
+  di <- dataset_indices
+  ri <- record_indices 
+  zipWith (\d r-> getNRecords (getDataset datasets d) r) di ri
+  where
+    cluster = length (datasets !! 0) `div` k
+    all_record_order = permutations [0..(length datasets) - 1]
+    record_indices = map (chunksOf k) all_record_order
+    dataset_indices = makeAllDatasetIndicesCombination
+                      $ replicate cluster (length datasets - 1)
+
