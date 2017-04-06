@@ -70,7 +70,7 @@ makeAllAnonymousDegreesCombination max_degrees =
 
 -- k匿名化されているか確認する
 isRepeat :: Eq a => [a] -> Bool
-isRepeat list = and $ map' (\element-> list !! 0 == element) list
+isRepeat list = and $ map (\element-> list !! 0 == element) list
 
 -- 匿名化データを標準出力へ書き込み
 printDatasetAsCSV :: [[String]] -> IO()
