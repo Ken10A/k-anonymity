@@ -2,6 +2,7 @@ module Util where
 
 import Data.List
 import Data.List.Split
+import System.Random.Shuffle
 
 -- 高速化のための正格版
 map' :: (a -> b) -> [a] -> [b]
@@ -178,8 +179,14 @@ anonymizePartialOpt partial  =
     anonymous_degrees = zipWith' (-) max_degrees common_degrees
     degrees_combination = makeAllAnonymousDegreesCombination anonymous_degrees
 
-k_Opt :: Int -> [[String]] -> [[String]]
-k_Opt k dataset = foldl' (++) [] $ map' anonymizePartialOpt partials 
+-- 匿名化後データセットをk個に分け，k個の中とk個でシャッフル
+shuffleDataset :: Int -> [[String]] -> IO [[String]]
+shuffleDataset k dataset = (\b-> fmap concat $ shuffleM $ chunksOf k b) =<< a
+  where 
+    a = mconcat $ map' shuffleM $ chunksOf k dataset
+
+getOptimalSolution :: Int -> [[String]] -> [[String]]
+getOptimalSolution k dataset = foldl' (++) [] $ map' anonymizePartialOpt partials 
   where
     partials = chunksOf k dataset
 
@@ -192,8 +199,9 @@ k_anonymizeOpt k path = do
   let assoc_ids  = getAssociativeIdentifier raw_data
   let confidential_info = getConfidentialInfo raw_data
 
-  let optimal_solution = foldl' (++) [] $ map' anonymizePartialOpt $ chunksOf k assoc_ids
+  let optimal_solution = getOptimalSolution k assoc_ids
   let max_usefulness = countDatasetUsefulness optimal_solution
+  ans <- shuffleDataset k $ zipWith' (++) optimal_solution confidential_info
   
   -- -- 1レコードを匿名化できる全ての匿名段階のリストを作成する
   -- let all_anonymous_degrees =
@@ -232,7 +240,7 @@ k_anonymizeOpt k path = do
   --       map' (\index-> getDataset all_k_anonymized_datasets index) $
   --       elemIndices (maximum usefulness_list) usefulness_list
    
-  printDatasetAsCSV $ zipWith' (++) optimal_solution confidential_info
+  printDatasetAsCSV ans
   putStrLn $ "maximum usefulness: " ++ (show max_usefulness)
 
 k_anonymizeSubOpt :: Int -> String -> IO()
@@ -244,8 +252,9 @@ k_anonymizeSubOpt k path = do
 
   let suboptimal_solution = anonymizePartialOpt assoc_ids
   let max_usefulness = countDatasetUsefulness suboptimal_solution
+  ans <- shuffleDataset k $ zipWith' (++) suboptimal_solution confidential_info
 
-  printDatasetAsCSV $ zipWith' (++) suboptimal_solution confidential_info
+  printDatasetAsCSV ans
   putStrLn $ "maximum usefulness: " ++ (show max_usefulness)
 
 k_anonymize :: [String] -> IO()
