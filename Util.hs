@@ -55,9 +55,6 @@ countDatasetUsefulness dataset =
   (sum $ map' countRecordUsefulness dataset) / (fromIntegral . length) dataset
 
 --  匿名化の最大値から匿名化段階の全ての組み合わせを作成する
-getRecordElemLength :: [String] -> [Int]
-getRecordElemLength record = map' length record
-
 makeCombination :: [[Int]] -> [[Int]] -> [[Int]]
 makeCombination x y = do
   a <- x
@@ -71,43 +68,9 @@ makeAllAnonymousDegreesCombination max_degrees =
     candidate_degrees = map' (\y-> [1..y]) max_degrees
     partial_degrees = map' (\zs-> [ [z] | z <- zs ]) candidate_degrees
 
--- 単一匿名段階の匿名化後データセット群から
--- 可能な複数の匿名段階を含むデータセットを作成する
-getDataset :: [[[String]]] -> Int -> [[String]]
-getDataset datasets index = datasets !! index
-
-getRecord :: [[String]] -> Int -> [String] 
-getRecord dataset index = dataset !! index
-
-makeAllDatasetIndicesCombination :: [Int]  -> [[Int]]
-makeAllDatasetIndicesCombination max_indices =
-  foldl makeCombination [[]]  partial_indices
-  where
-    candidate_indices = map' (\y-> [0..y]) max_indices
-    partial_indices = map' (\zs-> [ [z] | z <- zs ]) candidate_indices
-
-makeAnonymousDataset :: [[[String]]] -> [Int] -> [[String]]
-makeAnonymousDataset datasets indices =
-  zipWith' getRecord ordered_datasets [0 .. max_index]
-  where 
-    ordered_datasets = map' (\index-> getDataset datasets index) indices
-    max_index = length indices - 1
-
-makeAllAnonymousDatasets :: [[[String]]] -> [[Int]] -> [[[String]]]
-makeAllAnonymousDatasets datasets indices_list =
-  map' (\indices->  makeAnonymousDataset datasets indices) indices_list
-
--- データセットから可能な全ての並び替えを作成する
--- permutationsでOK
-permutateDataset :: [[String]] -> [[[String]]]
-permutateDataset dataset = permutations dataset
-
 -- k匿名化されているか確認する
 isRepeat :: Eq a => [a] -> Bool
 isRepeat list = and $ map' (\element-> list !! 0 == element) list
-
-isK_anonymized :: [[String]] -> Int -> Bool
-isK_anonymized dataset k = and $ map' isRepeat $ chunksOf k dataset
 
 -- 匿名化データを標準出力へ書き込み
 printDatasetAsCSV :: [[String]] -> IO()
@@ -139,22 +102,6 @@ countCommonDigits codes = loopCounting (length $ codes !! 0) codes
     loopCounting n' codes'
       | hasCommonNDigits n' codes' = n'
       | otherwise = loopCounting (n' - 1) codes'
-
-getNRecords :: [[String]] -> [Int] -> [[String]]
-getNRecords dataset record_indices = map' (getRecord dataset) record_indices
-
--- 同データセットから取ったk個のレコードを連続させたデータセットのリストを作成
-makeAllK_anonymizedDataset :: [[[String]]] -> Int -> [[[String]]]
-makeAllK_anonymizedDataset datasets k = do 
-  di <- dataset_indices
-  ri <- record_indices 
-  zipWith' (\d r-> getNRecords (getDataset datasets d) r) di ri
-  where
-    cluster = length (datasets !! 0) `div` k
-    all_record_order = permutations [0..(length datasets) - 1]
-    record_indices = map' (chunksOf k) all_record_order
-    dataset_indices = makeAllDatasetIndicesCombination
-                      $ replicate cluster (length datasets - 1)
 
 -- 最大有用度の匿名化データセットを返す
 updateMoreUsefullDataset :: [[String]] -> [[String]] -> [[String]]
@@ -202,44 +149,7 @@ k_anonymizeOpt k path = do
   let optimal_solution = getOptimalSolution k assoc_ids
   let max_usefulness = countDatasetUsefulness optimal_solution
   ans <- shuffleDataset k $ zipWith' (++) optimal_solution confidential_info
-  
-  -- -- 1レコードを匿名化できる全ての匿名段階のリストを作成する
-  -- let all_anonymous_degrees =
-  --       makeAllAnonymousDegreesCombination
-  --       $ zipWith' (-) (map' length $ dataset !! 0)
-  --       $ map' countCommonDigits $ transpose dataset
-        
-  -- let all_single_anonymity_datasets =
-   --      map' (\degrees-> anonymizeDataset dataset degrees) all_anonymous_degrees
-
-  -- -- あらゆる匿名段階のレコードを含む匿名化データセットを作成する
-  -- let all_dataset_indices_combination =
-  --       makeAllDatasetIndicesCombination $
-  --       replicate (length dataset) $ (length all_single_anonymity_datasets) - 1
-        
-  -- let all_multiple_anonymity_datasets = makeAllAnonymousDatasets
-  --       all_single_anonymity_datasets all_dataset_indices_combination
-
-  -- -- 各データセットを並び替える
-  -- let  permutated_datasets =
-  --        concat $ map' permutateDataset all_multiple_anonymity_datasets
-
-  -- -- k-匿名化されていないデータセットをフィルター
-  -- let all_k_anonymized_datasets =
-  --       filter (\datasets-> isK_anonymized datasets k) permutated_datasets
-
-  -- -- 全てのk匿名化データセットを作成
-  -- let all_k_anonymized_datasets =
-  --       makeAllK_anonymizedDataset all_single_anonymity_datasets k
-
-  -- -- 有用度計算
-  -- let usefulness_list = map' countDatasetUsefulness all_k_anonymized_datasets
-
-  -- -- 有用度最大のk-匿名化データセットを取り出す
-  -- let most_useful_datasets =
-  --       map' (\index-> getDataset all_k_anonymized_datasets index) $
-  --       elemIndices (maximum usefulness_list) usefulness_list
-   
+ 
   printDatasetAsCSV ans
   putStrLn $ "maximum usefulness: " ++ (show max_usefulness)
 
