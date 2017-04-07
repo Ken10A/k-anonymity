@@ -1,8 +1,19 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Util where
 
 import Data.List
 import Data.List.Split
 import System.Random.Shuffle
+import Data.Maybe
+import GHC.Generics
+import Data.Yaml
+
+data Config = Config { solution :: String
+                     , k        :: Int
+                     , assoc_id :: Int
+                     , filepath :: FilePath
+                     } deriving (Show, Generic)
+instance FromJSON Config
 
 -- 高速化のための正格版
 map' :: (a -> b) -> [a] -> [b]
@@ -17,7 +28,18 @@ zipWith' f (a:as) (b:bs) = x `seq` x : zipWith' f as bs
     x = f a b
 zipWith' _ _ _ = []
 
--- データセットの取得
+readConfig :: FilePath -> IO Config
+readConfig path = 
+  (decodeFile path :: IO (Maybe Config)) >>= \conf->
+  return $ fromMaybe conf_error conf
+  where
+    conf_error = (Config { solution = ""
+                         , k = 0
+                         , assoc_id = 0
+                         , filepath = ""
+                         })
+                           
+  -- データセットの取得
 readDatasetFromCSV :: String -> IO [[String]]
 readDatasetFromCSV path = do
   f <- readFile path
