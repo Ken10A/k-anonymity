@@ -9,7 +9,7 @@ import GHC.Generics
 import Data.Yaml
 
 data Config = Config { solution :: String
-                     , k        :: Int
+                     , k_size   :: Int
                      , assoc_id :: Int
                      , filepath :: FilePath
                      } deriving (Show, Generic)
@@ -34,7 +34,7 @@ readConfig path =
   return $ fromMaybe conf_error conf
   where
     conf_error = (Config { solution = ""
-                         , k = 0
+                         , k_size   = 0
                          , assoc_id = 0
                          , filepath = ""
                          })
@@ -87,7 +87,7 @@ makeAllAnonymousDegreesCombination :: [Int]  -> [[Int]]
 makeAllAnonymousDegreesCombination max_degrees =
   foldl' makeCombination [[]]  partial_degrees
   where
-    candidate_degrees = map' (\y-> [1..y]) max_degrees
+    candidate_degrees = map' (\y-> [0..y]) max_degrees
     partial_degrees = map' (\zs-> [ [z] | z <- zs ]) candidate_degrees
 
 -- k匿名化されているか確認する
@@ -154,8 +154,8 @@ shuffleDataset k dataset = (\b-> fmap concat $ shuffleM $ chunksOf k b) =<< a
   where 
     a = mconcat $ map' shuffleM $ chunksOf k dataset
 
-getOptimalSolution :: Int -> [[String]] -> [[String]]
-getOptimalSolution k dataset = foldl' (++) [] $ map' anonymizePartialOpt partials 
+getSubOptimalSolution :: Int -> [[String]] -> [[String]]
+getSubOptimalSolution k dataset = foldl' (++) [] $ map' anonymizePartialOpt partials 
   where
     partials = chunksOf k dataset
 
@@ -164,11 +164,12 @@ k_anonymizeOpt :: Int -> String -> IO()
 k_anonymizeOpt k path = do
 
   f <- readFile path
-  let raw_data = sort $ separateDataset 3 $ map' (splitOn ",") $ lines f
+  let raw_data = separateDataset 2 $ map' (splitOn ",") $ lines f
   let assoc_ids  = getAssociativeIdentifier raw_data
   let confidential_info = getConfidentialInfo raw_data
 
-  let optimal_solution = getOptimalSolution k assoc_ids
+  let optimal_solution = foldl' updateMoreUsefullDataset [] $
+                         filter (isK_anonymized k) $ getOptimalSolution k assoc_ids
   let max_usefulness = countDatasetUsefulness optimal_solution
   ans <- shuffleDataset k $ zipWith' (++) optimal_solution confidential_info
  
@@ -178,11 +179,11 @@ k_anonymizeOpt k path = do
 k_anonymizeSubOpt :: Int -> String -> IO()
 k_anonymizeSubOpt k path = do
   f <- readFile path
-  let raw_data = sort $ separateDataset 3 $ map' (splitOn ",") $ lines f
+  let raw_data = sort $ separateDataset 2 $ map' (splitOn ",") $ lines f
   let assoc_ids = getAssociativeIdentifier raw_data
   let confidential_info = getConfidentialInfo raw_data 
 
-  let suboptimal_solution = anonymizePartialOpt assoc_ids
+  let suboptimal_solution = getSubOptimalSolution k  assoc_ids
   let max_usefulness = countDatasetUsefulness suboptimal_solution
   ans <- shuffleDataset k $ zipWith' (++) suboptimal_solution confidential_info
 
@@ -213,3 +214,55 @@ k_anonymize cmdlargs
               "         [-s]    : getting suboptimal k-anonymity solution\n" ++
               "         [k]     : k-anonymity degree\n" ++
               "         [input] : raw data file path"
+
+k_anonymize' :: Config -> IO()
+k_anonymize' config 
+  | option == "optimal"     = do dataset <- readDatasetFromCSV path
+                                 if length dataset `mod` k == 0
+                                   then k_anonymizeOpt k path
+                                   else putStrLn k_error
+  | option == "suboptimal"  = do dataset <- readDatasetFromCSV path
+                                 if length dataset `mod` k == 0
+                                   then k_anonymizeSubOpt k path
+                                   else putStrLn k_error
+  | otherwise               = putStrLn usage
+  where
+    option    = solution config
+    k         = k_size config
+    assoc     = assoc_id config
+    path      = filepath config
+    k_error   = "WARNING!!\n" ++ 
+                "value 'k' is incorrect!\n" ++
+                "'k' is divisor of dataset column size"
+    usage     = "check setting -> config.yaml: \n" ++
+                "      solution: String \n" ++
+                "      k_size:   Int \n" ++
+                "      assoc_id: Int \n" ++
+                "      filepath: FilePath \n"
+
+isK_anonymized :: Int -> [[String]] -> Bool
+isK_anonymized k dataset = and $ map isRepeat $ chunksOf k dataset
+  
+getNRecords :: [[String]] -> [Int] -> [[String]]
+getNRecords dataset record_indices = map' ((!!) dataset) record_indices
+
+ --- 同データセットから取ったk個のレコードを連続させたデータセットのリストを作成
+getOptimalSolution :: Int -> [[String]]  -> [[[String]]]
+getOptimalSolution k dataset = do 
+  di <- dataset_indices 
+  ri <- record_indices 
+  zipWith' (\d r-> getNRecords ((!!) datasets d) r) di ri
+  where
+    max_degrees = map' length $ dataset !! 0
+    common_degrees = map' countCommonDigits $ transpose dataset
+    anonymous_degrees = zipWith' (-) max_degrees common_degrees
+    degrees_combination = makeAllAnonymousDegreesCombination anonymous_degrees
+    datasets = map' (anonymizeDataset dataset) degrees_combination
+    
+    makeAllDatasetIndicesCombination = makeAllAnonymousDegreesCombination
+    cluster = length (datasets !! 0) `div` k
+    all_record_order = permutations [0..(length dataset) - 1]
+    
+    record_indices = map' (chunksOf k) all_record_order
+    dataset_indices = makeAllDatasetIndicesCombination
+                      $ replicate cluster (length datasets - 1)
