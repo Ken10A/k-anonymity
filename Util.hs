@@ -126,10 +126,10 @@ countCommonDigits codes = loopCounting (length $ codes !! 0) codes
       | otherwise = loopCounting (n' - 1) codes'
 
 -- 最大有用度の匿名化データセットを返す
-updateMoreUsefullDataset :: [[String]] -> [[String]] -> [[String]]
-updateMoreUsefullDataset current [] = current
-updateMoreUsefullDataset [] new     = new 
-updateMoreUsefullDataset current new 
+updateMoreUsefulDataset :: [[String]] -> [[String]] -> [[String]]
+updateMoreUsefulDataset current [] = current
+updateMoreUsefulDataset [] new     = new 
+updateMoreUsefulDataset current new 
   | current_score >= new_score = current
   | otherwise                  = new
   where
@@ -139,7 +139,7 @@ updateMoreUsefullDataset current new
 -- k行の局所最適有用度の匿名後データセットを返す
 anonymizePartialOpt :: [[String]] -> [[String]]
 anonymizePartialOpt partial  =
-  foldl' updateMoreUsefullDataset []
+  foldl' updateMoreUsefulDataset []
   $ filter isRepeat
   $ map' (anonymizeDataset partial) degrees_combination
   where
@@ -159,6 +159,38 @@ getSubOptimalSolution k dataset = foldl' (++) [] $ map' anonymizePartialOpt part
   where
     partials = chunksOf k dataset
 
+isK_anonymized :: Int -> [[String]] -> Bool
+isK_anonymized k dataset = and $ map isRepeat $ chunksOf k dataset
+  
+getNRecords :: [[String]] -> [Int] -> [[String]]
+getNRecords dataset record_indices = map' ((!!) dataset) record_indices
+
+ --- 同データセットから取ったk個のレコードを連続させたデータセットのリストを作成
+getOptimalCandidates :: Int -> [[String]]  -> [[[String]]]
+getOptimalCandidates k dataset = do 
+  di <- dataset_indices 
+  ri <- record_indices 
+  return $ concat $ zipWith' (\d r-> getNRecords ((!!) datasets d) r) di ri
+  where
+    max_degrees = map' length $ dataset !! 0
+    common_degrees = map' countCommonDigits $ transpose dataset
+    anonymous_degrees = zipWith' (-) max_degrees common_degrees
+    degrees_combination = makeAllAnonymousDegreesCombination anonymous_degrees
+    datasets = map' (anonymizeDataset dataset) degrees_combination
+    
+    makeAllDatasetIndicesCombination = makeAllAnonymousDegreesCombination
+    cluster = length dataset `div` k
+    all_record_order = permutations [0..(length dataset) - 1]
+    
+    record_indices = map' (chunksOf k) all_record_order
+    dataset_indices = makeAllDatasetIndicesCombination
+                      $ replicate cluster (length datasets - 1)    
+
+getOptimalSolution :: Int -> [[String]] -> [[String]]
+getOptimalSolution k dataset =
+  foldl' updateMoreUsefulDataset [] $ filter (isK_anonymized k)
+  $ getOptimalCandidates k dataset
+
 -- Main
 k_anonymizeOpt :: Int -> String -> IO()
 k_anonymizeOpt k path = do
@@ -168,14 +200,15 @@ k_anonymizeOpt k path = do
   let assoc_ids  = getAssociativeIdentifier raw_data
   let confidential_info = getConfidentialInfo raw_data
 
-  let optimal_solution = foldl' updateMoreUsefullDataset [] $
-                         filter (isK_anonymized k) $ getOptimalSolution k assoc_ids
+  let optimal_solution = getOptimalSolution k assoc_ids
+                         
   let max_usefulness = countDatasetUsefulness optimal_solution
   ans <- shuffleDataset k $ zipWith' (++) optimal_solution confidential_info
  
   printDatasetAsCSV ans
   putStrLn $ "maximum usefulness: " ++ (show max_usefulness)
 
+ 
 k_anonymizeSubOpt :: Int -> String -> IO()
 k_anonymizeSubOpt k path = do
   f <- readFile path
@@ -239,30 +272,3 @@ k_anonymize' config
                 "      k_size:   Int \n" ++
                 "      assoc_id: Int \n" ++
                 "      filepath: FilePath \n"
-
-isK_anonymized :: Int -> [[String]] -> Bool
-isK_anonymized k dataset = and $ map isRepeat $ chunksOf k dataset
-  
-getNRecords :: [[String]] -> [Int] -> [[String]]
-getNRecords dataset record_indices = map' ((!!) dataset) record_indices
-
- --- 同データセットから取ったk個のレコードを連続させたデータセットのリストを作成
-getOptimalSolution :: Int -> [[String]]  -> [[[String]]]
-getOptimalSolution k dataset = do 
-  di <- dataset_indices 
-  ri <- record_indices 
-  zipWith' (\d r-> getNRecords ((!!) datasets d) r) di ri
-  where
-    max_degrees = map' length $ dataset !! 0
-    common_degrees = map' countCommonDigits $ transpose dataset
-    anonymous_degrees = zipWith' (-) max_degrees common_degrees
-    degrees_combination = makeAllAnonymousDegreesCombination anonymous_degrees
-    datasets = map' (anonymizeDataset dataset) degrees_combination
-    
-    makeAllDatasetIndicesCombination = makeAllAnonymousDegreesCombination
-    cluster = length (datasets !! 0) `div` k
-    all_record_order = permutations [0..(length dataset) - 1]
-    
-    record_indices = map' (chunksOf k) all_record_order
-    dataset_indices = makeAllDatasetIndicesCombination
-                      $ replicate cluster (length datasets - 1)
