@@ -2,5 +2,6 @@ Data/
 *.hi
 *.o
 Main
+.idea/
 
 
