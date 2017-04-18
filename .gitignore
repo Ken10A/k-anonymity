@@ -1,7 +1,5 @@
-Data/
 *.hi
 *.o
-Main
 .idea/
-
+.stack-work
 
